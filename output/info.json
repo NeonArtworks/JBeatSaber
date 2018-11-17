@@ -1,0 +1,20 @@
+{
+  "songName": "RUDE - Eternal Youth",
+  "songSubName": "subsub",
+  "authorName": "NeonArtworks",
+  "beatsPerMinute": 140.0,
+  "previewStartTime": 0,
+  "previewDuration": 10,
+  "coverImagePath": "coverArt.jpg",
+  "environmentName": "NiceEnvironment",
+  "difficultyLevels": [
+    {
+      "difficulty": "Easy",
+      "difficultyRank": 1,
+      "audioPath": "RUDE - Eternal Youth.ogg",
+      "jsonPath": "Easy.json",
+      "offset": 0,
+      "oldOffset": 0
+    }
+  ]
+}
