@@ -1,30 +1,42 @@
 package jbeatsaber.test;
 
+import java.io.File;
+import java.io.IOException;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineEvent.Type;
+import javax.sound.sampled.LineListener;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
 import org.fxyz3d.shapes.primitives.CubeMesh;
-import org.fxyz3d.shapes.primitives.SpringMesh;
 import org.fxyz3d.utils.CameraTransformer;
 
-import com.sun.javafx.sg.prism.NGPhongMaterial;
-
+import at.neonartworks.jbeatsaber.core.audio.AudioPlayer;
+import at.neonartworks.jbeatsaber.json.level.Level;
+import at.neonartworks.jbeatsaber.json.note.Note;
+import at.neonartworks.jbeatsaber.json.note.NoteType;
+import at.neonartworks.jbeatsaber.util.ContentWriter;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Camera;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
+import javafx.scene.PointLight;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
-import javafx.scene.effect.Light.Point;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Material;
 import javafx.scene.paint.PhongMaterial;
-import javafx.scene.shape.CullFace;
-import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class Sampler extends Application
 {
@@ -42,7 +54,7 @@ public class Sampler extends Application
 	double mouseOldY;
 	double mouseDeltaX;
 	double mouseDeltaY;
-
+	private double bpms = 1;
 	private double CAMERA_INITIAL_DISTANCE = -1200;
 	private double CAMERA_INITIAL_DISTANCE2 = 0;
 	private final double CAMERA_INITIAL_X_ANGLE = 0;
@@ -58,24 +70,42 @@ public class Sampler extends Application
 	public void start(Stage primaryStage) throws Exception
 	{
 		PerspectiveCamera camera = new PerspectiveCamera(true);
+		PointLight light = new PointLight(Color.WHITE);
+
 		camera.setNearClip(0.1);
 		camera.setFarClip(10000.0);
 		camera.setTranslateX(10);
 		camera.setTranslateZ(-100);
 
 		camera.setFieldOfView(20);
-		final Point anchor = new Point();
 		CameraTransformer cameraTransform = new CameraTransformer();
 		cameraTransform.getChildren().add(camera);
 		cameraTransform.ry.setAngle(-30.0);
 		cameraTransform.rx.setAngle(-15.0);
 		Translate pivot = new Translate();
-		SpringMesh spring = new SpringMesh(10, 2, 2, 8 * 2 * Math.PI, 200, 100, 0, 0);
+		ContentWriter cw = new ContentWriter();
+		Group group = new Group(cameraTransform, light);
 
-		spring.setCullFace(CullFace.NONE);
-		spring.setTextureModeVertices3D(1530, p -> p.f);
-
-		Group group = new Group(cameraTransform, spring);
+		Level level = cw.readJson(new File("S:\\_4_tmp_tmp\\BeatSaber Songs\\Rasputin (Funk Overload)\\Hard.json"));
+		double bpm = level.getTrack().getBeatsPerMinute();
+		bpms = bpm / 60000d;
+		
+		if (level != null)
+			for (Note n : level.getTrack().getNotes())
+			{
+				CubeMesh cubeMesh = new CubeMesh(10);
+				double offset = Note.beats2ms(n.getTime(), bpm);
+				cubeMesh.setTranslateZ(offset);
+				cubeMesh.setTranslateX(n.getHorizontalPosition() * 10d);
+				cubeMesh.setTranslateY(n.getVerticalPosition() * 10d);
+				PhongMaterial material = new PhongMaterial();
+				if (n.getType() == NoteType.BLUE.getNoteType())
+					material.setDiffuseColor(Color.BLUE);
+				else
+					material.setDiffuseColor(Color.RED);
+				cubeMesh.setMaterial(material);
+				group.getChildren().add(cubeMesh);
+			}
 
 		group.getChildren().add(cameraXform);
 		cameraXform.getChildren().add(cameraXform2);
@@ -83,7 +113,7 @@ public class Sampler extends Application
 		cameraXform3.getChildren().add(camera);
 
 		Scene scene = new Scene(group, 600, 400, true, SceneAntialiasing.BALANCED);
-		scene.setFill(Color.BISQUE);
+		scene.setFill(Color.BLACK);
 		scene.setCamera(camera);
 		group.getChildren().stream().filter(node -> !(node instanceof Camera))
 				.forEach(node -> node.setOnMouseClicked(event ->
@@ -98,6 +128,53 @@ public class Sampler extends Application
 		primaryStage.setScene(scene);
 		primaryStage.setTitle("JBeatSaber");
 		primaryStage.show();
+	}
+
+	private static void playClip(File clipFile)
+			throws IOException, UnsupportedAudioFileException, LineUnavailableException, InterruptedException
+	{
+		class AudioListener implements LineListener
+		{
+			private boolean done = false;
+
+			@Override
+			public synchronized void update(LineEvent event)
+			{
+				Type eventType = event.getType();
+				if (eventType == Type.STOP || eventType == Type.CLOSE)
+				{
+					done = true;
+					notifyAll();
+				}
+			}
+
+			public synchronized void waitUntilDone() throws InterruptedException
+			{
+				while (!done)
+				{
+					wait();
+				}
+			}
+		}
+		AudioListener listener = new AudioListener();
+		AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(clipFile);
+		try
+		{
+			Clip clip = AudioSystem.getClip();
+			clip.addLineListener(listener);
+			clip.open(audioInputStream);
+			try
+			{
+				clip.start();
+				listener.waitUntilDone();
+			} finally
+			{
+				clip.close();
+			}
+		} finally
+		{
+			audioInputStream.close();
+		}
 	}
 
 	public void setMouseEventsToScene(Scene scene, PerspectiveCamera camera)
@@ -157,19 +234,63 @@ public class Sampler extends Application
 			});
 		scene.setOnKeyPressed(me ->
 			{
+				double transY = camera.getTranslateY();
+				double transZ = camera.getTranslateZ();
+				double modifier = 1.0;
+				if (me.isControlDown())
+				{
+					modifier = CONTROL_MULTIPLIER;
+				}
+				if (me.isShiftDown())
+				{
+					modifier = SHIFT_MULTIPLIER;
+				}
 				switch (me.getCode())
 				{
 				case UP:
-					camera.setTranslateZ(CAMERA_INITIAL_DISTANCE += 10);
+					camera.setTranslateY(transY -= 10 * modifier);
 					break;
 				case DOWN:
-					camera.setTranslateZ(CAMERA_INITIAL_DISTANCE -= 10);
+					camera.setTranslateY(transY += 10 * modifier);
 					break;
 				case LEFT:
-					camera.setTranslateX(CAMERA_INITIAL_DISTANCE2 -= 5);
+					camera.setTranslateX(CAMERA_INITIAL_DISTANCE2 -= 5 * modifier);
 					break;
 				case RIGHT:
-					camera.setTranslateX(CAMERA_INITIAL_DISTANCE2 += 5);
+					camera.setTranslateX(CAMERA_INITIAL_DISTANCE2 += 5 * modifier);
+					break;
+				case W:
+					camera.setTranslateZ(transZ += 10 * modifier);
+					break;
+				case S:
+					camera.setTranslateZ(transZ -= 10 * modifier);
+					break;
+				case ENTER:
+					Thread thread = new Thread()
+					{
+						public void run()
+						{
+							AudioPlayer audioPlayer = new AudioPlayer();
+							audioPlayer.play("S:\\_4_tmp_tmp\\BeatSaber Songs\\Rasputin (Funk Overload)\\song.ogg");
+
+						}
+					};
+					thread.setDaemon(true);
+					thread.start();
+
+					Timeline fiveSecondsWonder = new Timeline(
+							new KeyFrame(Duration.millis(1), new EventHandler<ActionEvent>()
+							{
+
+								@Override
+								public void handle(ActionEvent event)
+								{
+									double transZ = camera.getTranslateZ();
+									camera.setTranslateZ(transZ += bpms);
+								}
+							}));
+					fiveSecondsWonder.setCycleCount(Timeline.INDEFINITE);
+					fiveSecondsWonder.play();
 					break;
 				}
 			});
@@ -177,10 +298,10 @@ public class Sampler extends Application
 			{
 				if (me.getButton() == MouseButton.SECONDARY)
 				{
-					CAMERA_INITIAL_DISTANCE = -1200;
-					camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
-					cameraXform.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
-					cameraXform.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
+					// CAMERA_INITIAL_DISTANCE = -1200;
+					// camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
+					// cameraXform.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
+					// cameraXform.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
 				}
 			});
 	}

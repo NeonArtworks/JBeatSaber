@@ -11,7 +11,7 @@ public class Note
 	private int _lineLayer;
 	private int _type;
 	private int _cutDirection;
-	
+
 	/**
 	 * Converts time (in milliseconds) into the time in beats
 	 * 
@@ -21,9 +21,15 @@ public class Note
 	 */
 	public static double ms2beats(double time, double bpm)
 	{
+
 		return (time * bpm) / (1000d * 60d);
 	}
-	
+
+	public static double beats2ms(double beat, double bpm)
+	{
+		return (beat * 60000d) / bpm;
+	}
+
 	public Note(double _time, int _lineIndex, int _lineLayer, int _type, int _cutDirection)
 	{
 		super();
@@ -45,7 +51,7 @@ public class Note
 		this._cutDirection = direction.getCutDirection();
 
 	}
-	
+
 	public void setTime(double _time)
 	{
 		this._time = _time;

@@ -1,4 +1,12 @@
-
+*.class
 .classpath
 .project
 *.prefs
+target/*
+target/test-classes/*
+
+*.class
+target/test-classes/window.fxml
+target/test-classes/jbeatsaber/test/Sampler.class
+target/classes/at/neonartworks/jbeatsaber/util/ContentWriter.class
+target/classes/at/neonartworks/jbeatsaber/json/note/Note.class
