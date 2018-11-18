@@ -31,6 +31,7 @@ import javafx.scene.PerspectiveCamera;
 import javafx.scene.PointLight;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.input.MouseButton;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.PhongMaterial;
@@ -38,10 +39,11 @@ import javafx.scene.transform.Translate;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-public class Sampler extends Application
+public class JBeatPlayer extends Application
 {
 	public static final int TOOLBAR_WIDTH = 150;
-
+	private final String PATH = "S:\\_4_tmp_tmp\\BeatSaber Songs\\Believer\\";
+	
 	private final double CONTROL_MULTIPLIER = 0.1;
 	private final double SHIFT_MULTIPLIER = 10.0;
 	private final double MOUSE_SPEED = 0.1;
@@ -61,11 +63,11 @@ public class Sampler extends Application
 	private final double CAMERA_INITIAL_Y_ANGLE = 0;
 	private final double CAMERA_NEAR_CLIP = 0.1;
 	private final double CAMERA_FAR_CLIP = 10000.0;
-
+	private AudioPlayer audioPlayer = new AudioPlayer();
 	final Xform cameraXform = new Xform();
 	final Xform cameraXform2 = new Xform();
 	final Xform cameraXform3 = new Xform();
-
+	private ProgressBar prBar = new ProgressBar();	
 	@Override
 	public void start(Stage primaryStage) throws Exception
 	{
@@ -74,22 +76,26 @@ public class Sampler extends Application
 
 		camera.setNearClip(0.1);
 		camera.setFarClip(10000.0);
-		camera.setTranslateX(10);
+		camera.setTranslateX(0);
 		camera.setTranslateZ(-100);
-
 		camera.setFieldOfView(20);
+
 		CameraTransformer cameraTransform = new CameraTransformer();
 		cameraTransform.getChildren().add(camera);
 		cameraTransform.ry.setAngle(-30.0);
 		cameraTransform.rx.setAngle(-15.0);
 		Translate pivot = new Translate();
 		ContentWriter cw = new ContentWriter();
-		Group group = new Group(cameraTransform, light);
-
-		Level level = cw.readJson(new File("S:\\_4_tmp_tmp\\BeatSaber Songs\\Rasputin (Funk Overload)\\Hard.json"));
-		double bpm = level.getTrack().getBeatsPerMinute();
-		bpms = bpm / 60000d;
 		
+		Group group = new Group(cameraTransform, light);
+		
+		System.out.println(audioPlayer.calculateDuration(new File(PATH + "song.ogg")));
+		
+		Level level = cw.readJson(new File(PATH + "Expert.json"));
+		double bpm = level.getTrack().getBeatsPerMinute();
+		double bpb = level.getTrack().getBeatsPerBar();
+		bpms = (bpm * bpb) / 60000d;
+
 		if (level != null)
 			for (Note n : level.getTrack().getNotes())
 			{
@@ -270,9 +276,8 @@ public class Sampler extends Application
 					{
 						public void run()
 						{
-							AudioPlayer audioPlayer = new AudioPlayer();
-							audioPlayer.play("S:\\_4_tmp_tmp\\BeatSaber Songs\\Rasputin (Funk Overload)\\song.ogg");
-
+							audioPlayer.play(PATH + "song.ogg");
+							
 						}
 					};
 					thread.setDaemon(true);
@@ -286,7 +291,7 @@ public class Sampler extends Application
 								public void handle(ActionEvent event)
 								{
 									double transZ = camera.getTranslateZ();
-									camera.setTranslateZ(transZ += bpms);
+									camera.setTranslateZ(transZ += 1);
 								}
 							}));
 					fiveSecondsWonder.setCycleCount(Timeline.INDEFINITE);
@@ -298,10 +303,10 @@ public class Sampler extends Application
 			{
 				if (me.getButton() == MouseButton.SECONDARY)
 				{
-					// CAMERA_INITIAL_DISTANCE = -1200;
-					// camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
-					// cameraXform.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
-					// cameraXform.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
+					//CAMERA_INITIAL_DISTANCE = -1200;
+					//camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
+					cameraXform.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
+					cameraXform.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
 				}
 			});
 	}

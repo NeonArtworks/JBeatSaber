@@ -7,10 +7,10 @@ public class Obstacle
 	private double _time;
 	private int _lineIndex;
 	private int _type;
-	private int _duration;
+	private double _duration;
 	private int _width;
 
-	public Obstacle(double _time, int _lineIndex, int _type, int _duration, int _width)
+	public Obstacle(double _time, int _lineIndex, int _type, double _duration, int _width)
 	{
 		super();
 		this._time = _time;
@@ -20,7 +20,7 @@ public class Obstacle
 		this._width = _width;
 	}
 
-	public Obstacle(double _time, HorizontalPosition pos, ObstacleType type, int duration, ObstacleWidth width)
+	public Obstacle(double _time, HorizontalPosition pos, ObstacleType type, double duration, ObstacleWidth width)
 	{
 		super();
 		this._time = _time;
@@ -70,12 +70,12 @@ public class Obstacle
 		this._type = _type;
 	}
 
-	public int getDuration()
+	public double getDuration()
 	{
 		return _duration;
 	}
 
-	public void setDuration(int _duration)
+	public void setDuration(double _duration)
 	{
 		this._duration = _duration;
 	}
